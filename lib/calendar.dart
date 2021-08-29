@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:calender_clone/event.dart';
 
 class Calendar extends StatefulWidget {
   const Calendar({Key? key}) : super(key: key);
@@ -9,9 +10,28 @@ class Calendar extends StatefulWidget {
 }
 
 class _CalendarState extends State<Calendar> {
+  late Map<DateTime, List<Event>> selectedEvents;
   CalendarFormat format = CalendarFormat.month;
   DateTime selectedDay = DateTime.now();
   DateTime focusedDay = DateTime.now();
+
+  TextEditingController _eventController = TextEditingController();
+
+  @override
+  void initState() {
+    selectedEvents = {};
+    super.initState();
+  }
+
+  List<Event> _getEventsfromDay(DateTime date) {
+    return selectedEvents[date] ?? [];
+  }
+
+  @override
+  void dispose() {
+    _eventController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,51 +40,101 @@ class _CalendarState extends State<Calendar> {
         title: Text('캘린더'),
         centerTitle: true,
       ),
-      body: TableCalendar(
-        focusedDay: focusedDay,
-        firstDay: DateTime(1990),
-        lastDay: DateTime(2050),
-        calendarFormat: format,
-        onFormatChanged: (CalendarFormat _format) {
-          setState(() {
-            format = _format;
-          });
-        },
-        startingDayOfWeek: StartingDayOfWeek.sunday,
-        daysOfWeekVisible: true,
+      body: Column(children: [
+        TableCalendar(
+          focusedDay: focusedDay,
+          firstDay: DateTime(1990),
+          lastDay: DateTime(2050),
+          calendarFormat: format,
+          onFormatChanged: (CalendarFormat _format) {
+            setState(() {
+              format = _format;
+            });
+          },
+          startingDayOfWeek: StartingDayOfWeek.sunday,
+          daysOfWeekVisible: true,
 
-        //Day changed
-        onDaySelected: (DateTime selectDay, DateTime focusDay) {
-          setState(() {
-            selectedDay = selectDay;
-            focusedDay = focusDay;
-          });
-          print(focusedDay);
-        },
-        selectedDayPredicate: (DateTime date) {
-          return isSameDay(selectedDay, date);
-        },
+          //Day changed
+          onDaySelected: (DateTime selectDay, DateTime focusDay) {
+            setState(() {
+              selectedDay = selectDay;
+              focusedDay = focusDay;
+            });
+            print(focusedDay);
+          },
+          selectedDayPredicate: (DateTime date) {
+            return isSameDay(selectedDay, date);
+          },
 
-        //To style the Calendar
-        calendarStyle: CalendarStyle(
-          isTodayHighlighted: true,
-          selectedDecoration:
-              BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-          selectedTextStyle: TextStyle(color: Colors.white),
-          todayDecoration: BoxDecoration(
-              color: Colors.lightBlueAccent, shape: BoxShape.circle),
-          defaultDecoration: BoxDecoration(shape: BoxShape.circle),
-          weekendDecoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), shape: BoxShape.circle),
+          eventLoader: _getEventsfromDay,
+
+          //To style the Calendar
+          calendarStyle: CalendarStyle(
+            isTodayHighlighted: true,
+            selectedDecoration:
+                BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+            selectedTextStyle: TextStyle(color: Colors.white),
+            todayDecoration: BoxDecoration(
+                color: Colors.lightBlueAccent, shape: BoxShape.circle),
+            defaultDecoration: BoxDecoration(shape: BoxShape.circle),
+            weekendDecoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.1),
+                shape: BoxShape.circle),
+          ),
+
+          headerStyle: HeaderStyle(
+            formatButtonVisible: true,
+            titleCentered: true,
+            formatButtonShowsNext: false,
+            formatButtonDecoration: BoxDecoration(
+                color: Colors.blue, borderRadius: BorderRadius.circular(20.0)),
+            formatButtonTextStyle: TextStyle(color: Colors.white),
+          ),
         ),
+        ..._getEventsfromDay(selectedDay).map((Event event) => ListTile(title: Text(event.title),))
+      ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+                  title: Text("일정 추가"),
+                  content: TextFormField(
+                    controller: _eventController,
+                  ),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("취소")),
+                    TextButton(
+                        onPressed: () {
+                          if (_eventController.text.isEmpty) {
+                            // Navigator.pop(context);
+                            // return;
+                          } else {
+                            if (selectedEvents[selectedDay] != null) {
+                              selectedEvents[selectedDay]!.add(
+                                Event(title: _eventController.text),
+                              );
+                            } else {
+                              selectedEvents[selectedDay] = [
+                                Event(title: _eventController.text)
+                              ];
+                            }
 
-        headerStyle: HeaderStyle(
-          formatButtonVisible: true,
-          titleCentered: true,
-          formatButtonShowsNext: false,
-          formatButtonDecoration: BoxDecoration(
-              color: Colors.blue, borderRadius: BorderRadius.circular(20.0)),
-          formatButtonTextStyle: TextStyle(color: Colors.white),
-        ),
+                          }
+                          Navigator.pop(context);
+                          _eventController.clear();
+                          setState(() {
+
+                          });
+                          return;
+                        },
+                        child: Text("확인"))
+                  ],
+                )),
+        label: Text("일정 추가"),
+        icon: Icon(Icons.add),
       ),
     );
   }
